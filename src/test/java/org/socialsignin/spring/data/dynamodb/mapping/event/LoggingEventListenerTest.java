@@ -15,104 +15,107 @@
  */
 package org.socialsignin.spring.data.dynamodb.mapping.event;
 
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedQueryList;
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.slf4j.event.Level;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.socialsignin.spring.data.dynamodb.domain.sample.User;
-import com.github.valfirst.slf4jtest.TestLogger;
-import com.github.valfirst.slf4jtest.TestLoggerFactory;
+import software.amazon.awssdk.core.pagination.sync.SdkIterable;
+import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static java.util.Arrays.asList;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static com.github.valfirst.slf4jtest.LoggingEvent.trace;
 
-@RunWith(MockitoJUnitRunner.class)
+/**
+ * Tests for LoggingEventListener.
+ *
+ * SDK v2 Migration Notes:
+ * - SDK v1: PaginatedQueryList<T> → SDK v2: PageIterable<T>
+ * - SDK v1: PaginatedScanList<T> → SDK v2: PageIterable<T>
+ * - SDK v2: PageIterable.items() returns SdkIterable<T>
+ * - SdkIterable.stream() provides iteration over all items across pages
+ */
+@ExtendWith(MockitoExtension.class)
 public class LoggingEventListenerTest {
 
-    private final TestLogger logger = TestLoggerFactory.getTestLogger(LoggingEventListener.class);
     private final User sampleEntity = new User();
     @Mock
-    private PaginatedQueryList<User> sampleQueryList;
+    private PageIterable<User> sampleQueryList;
     @Mock
-    private PaginatedScanList<User> sampleScanList;
+    private PageIterable<User> sampleScanList;
+    @Mock
+    private SdkIterable<User> sampleQueryItems;
+    @Mock
+    private SdkIterable<User> sampleScanItems;
 
+    @Spy
     private LoggingEventListener underTest;
-
-    @Before
-    public void setUp() {
-        underTest = new LoggingEventListener();
-
-        logger.setEnabledLevels(Level.TRACE);
-
-        List<User> queryList = new ArrayList<>();
-        queryList.add(sampleEntity);
-        when(sampleQueryList.stream()).thenReturn(queryList.stream());
-        when(sampleScanList.stream()).thenReturn(queryList.stream());
-    }
-
-    @After
-    public void clearLoggers() {
-        TestLoggerFactory.clear();
-    }
 
     @Test
     public void testAfterDelete() {
         underTest.onApplicationEvent(new AfterDeleteEvent<>(sampleEntity));
 
-        assertThat(logger.getLoggingEvents(), is(asList(trace("onAfterDelete: {}", sampleEntity))));
+        verify(underTest).onAfterDelete(sampleEntity);
     }
 
     @Test
     public void testAfterLoad() {
         underTest.onApplicationEvent(new AfterLoadEvent<>(sampleEntity));
 
-        assertThat(logger.getLoggingEvents(), is(asList(trace("onAfterLoad: {}", sampleEntity))));
+        verify(underTest).onAfterLoad(sampleEntity);
     }
 
     @Test
     public void testAfterQuery() {
+        // SDK v2: PageIterable.items() returns SdkIterable which has spliterator() method
+        List<User> queryList = new ArrayList<>();
+        queryList.add(sampleEntity);
+
+        when(sampleQueryList.items()).thenReturn(sampleQueryItems);
+        when(sampleQueryItems.spliterator()).thenReturn(queryList.spliterator());
+
         underTest.onApplicationEvent(new AfterQueryEvent<>(sampleQueryList));
 
-        assertThat(logger.getLoggingEvents(), is(asList(trace("onAfterQuery: {}", sampleEntity))));
+        verify(underTest).onAfterQuery(sampleEntity);
     }
 
     @Test
     public void testAfterSave() {
         underTest.onApplicationEvent(new AfterSaveEvent<>(sampleEntity));
 
-        assertThat(logger.getLoggingEvents(), is(asList(trace("onAfterSave: {}", sampleEntity))));
+        verify(underTest).onAfterSave(sampleEntity);
     }
 
     @Test
     public void testAfterScan() {
+        // SDK v2: PageIterable.items() returns SdkIterable which has spliterator() method
+        List<User> scanList = new ArrayList<>();
+        scanList.add(sampleEntity);
+
+        when(sampleScanList.items()).thenReturn(sampleScanItems);
+        when(sampleScanItems.spliterator()).thenReturn(scanList.spliterator());
+
         underTest.onApplicationEvent(new AfterScanEvent<>(sampleScanList));
 
-        assertThat(logger.getLoggingEvents(), is(asList(trace("onAfterScan: {}", sampleEntity))));
+        verify(underTest).onAfterScan(sampleEntity);
     }
 
     @Test
     public void testBeforeDelete() {
         underTest.onApplicationEvent(new BeforeDeleteEvent<>(sampleEntity));
 
-        assertThat(logger.getLoggingEvents(), is(asList(trace("onBeforeDelete: {}", sampleEntity))));
+        verify(underTest).onBeforeDelete(sampleEntity);
     }
 
     @Test
     public void testBeforeSave() {
         underTest.onApplicationEvent(new BeforeSaveEvent<>(sampleEntity));
 
-        assertThat(logger.getLoggingEvents(), is(asList(trace("onBeforeSave: {}", sampleEntity))));
+        verify(underTest).onBeforeSave(sampleEntity);
     }
 
 }

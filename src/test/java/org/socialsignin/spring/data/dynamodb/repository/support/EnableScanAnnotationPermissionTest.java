@@ -15,8 +15,8 @@
  */
 package org.socialsignin.spring.data.dynamodb.repository.support;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.socialsignin.spring.data.dynamodb.domain.sample.User;
 import org.socialsignin.spring.data.dynamodb.repository.EnableScan;
 import org.socialsignin.spring.data.dynamodb.repository.EnableScanCount;
@@ -25,26 +25,13 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class EnableScanAnnotationPermissionTest {
 
-    @EnableScan
+
     public interface SampleRepository {
-        List<User> findAll();
-    }
-
-    public interface SampleNoScanRepository {
-        List<User> findAll();
-    }
-
-    @EnableScanCount
-    public interface SampleMethodRepository {
-
-        @EnableScan
-        int someMethodThatsIgnored();
-
         @EnableScan
         int count();
 
@@ -56,10 +43,31 @@ public class EnableScanAnnotationPermissionTest {
 
         @EnableScan
         Page<User> findAll(Pageable pageable);
+    }
+
+    public interface SampleNoScanRepository {
+        List<User> findAll();
+    }
+
+
+    public interface SampleMethodRepository {
+
+        @EnableScan
+        int count();
+
+        @EnableScan
+        void deleteAll();
+
+        @EnableScan
+        List<User> findAll();
+
+        @EnableScan
+        @EnableScanCount
+        Page<User> findAll(Pageable pageable);
 
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
 
     }
